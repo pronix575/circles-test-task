@@ -5,7 +5,9 @@ class Store {
   }
 
   subscribe(callback) {
-    this.subscribers.push(callback);
+    if (callback) {
+      this.subscribers.push(callback);
+    }
   }
 
   unsubscribe() {
@@ -13,7 +15,10 @@ class Store {
   }
 
   update(callback) {
-    this.data = callback(this.data);
+    if (callback) {
+      this.data = callback(this.data);
+    }
+
     this.subscribers.forEach((elem) => elem(this.data));
   }
 }
@@ -64,22 +69,33 @@ const templates = {
         <input placeholder="Введите n" type="number" id="start-form__circles-number-input" />
         <button id="start-form__start_button" disabled>Начать</button>
     </div>`,
-  getCircle(id, color) {
-    return `<div class="circle" id="circle-${id}" style="background: ${color}"></div>`;
+  getCircle(id, color, radius) {
+    return `<div class="circle" id="circle-${id}" style="background: ${color}; width: ${
+      radius * 2
+    }px; height: ${radius * 2}px"></div>`;
   },
   getCirclesContainer(circlesTemp) {
     return `<div id="circles-container">${circlesTemp}</div>`;
   },
 };
 
-function renderCircles(circles) {
+function renderCircles(circles, n) {
   return circles
-    .map((elem) => templates.getCircle(elem.id, elem.cssColorStyle))
+    .map((elem) => {
+      const computedRadius = Math.round((window.innerWidth * 0.4) / n);
+      return templates.getCircle(
+        elem.id,
+        elem.cssColorStyle,
+        computedRadius > 120 ? 120 : computedRadius
+      );
+    })
     .join(``);
 }
 
 function circlesScript(rootId) {
   const rootElement = document.getElementById(rootId);
+  if (!rootElement) return;
+
   rootElement.innerHTML = templates.startForm;
 
   const formInput = document.getElementById("start-form__circles-number-input");
@@ -99,12 +115,17 @@ function circlesScript(rootId) {
   };
 
   formButton.onclick = () => {
-    if (n) {
-      const circlesStore = new Store(createCircles(n));
+    if (!n) return;
+
+    const circlesStore = new Store(createCircles(n));
+
+    circlesStore.subscribe((data) => {
       rootElement.innerHTML = templates.getCirclesContainer(
-        renderCircles(circlesStore.data)
+        renderCircles(data, n)
       );
-    }
+    });
+
+    circlesStore.update();
   };
 }
 
